@@ -1,0 +1,21 @@
+# Google Services (contains Firebase project config — do not commit)
+/app/google-services.json
+
+# API Keys
+local.properties
+
+# Keystore files
+*.jks
+*.keystore
+
+# Standard Android / Gradle
+.gradle/
+build/
+*.apk
+*.aab
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/

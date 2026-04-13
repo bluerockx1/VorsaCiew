@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Used by themes.xml before Compose initialises -->
+    <!-- VorsaCiew brand: pixel-inverted from CorsaView iOS gradient (#c24181→#5038ea) -->
+    <!-- #c24181 inverted = #3dbe7e (mint green), #5038ea inverted = #afc715 (chartreuse) -->
+    <color name="launch_background">#F6FFF4</color>
+    <color name="primary_mint">#3DBE7E</color>
+    <color name="secondary_chartreuse">#AFC715</color>
+</resources>
