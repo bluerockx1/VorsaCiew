@@ -1,6 +1,3 @@
-# Google Services (contains Firebase project config — do not commit)
-/app/google-services.json
-
 # API Keys
 local.properties
 

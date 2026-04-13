@@ -31,8 +31,9 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
           restore-keys: gradle-
 
-      # Decode google-services.json from the GitHub secret
-      - name: Write google-services.json
+      # Overwrite placeholder google-services.json with real one from secret (when available)
+      - name: Write google-services.json (from secret if set)
+        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
         run: |
           echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > app/google-services.json
 
