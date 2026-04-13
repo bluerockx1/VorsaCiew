@@ -37,9 +37,21 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
-          fi
+          python3 - <<'PYEOF'
+          import os, json
+          content = os.environ.get("GOOGLE_SERVICES_JSON", "").strip()
+          if not content:
+              print("GOOGLE_SERVICES_JSON secret not set — using placeholder")
+          else:
+              try:
+                  data = json.loads(content)
+                  with open("app/google-services.json", "w") as f:
+                      json.dump(data, f, indent=2)
+                  print("google-services.json written successfully from secret")
+              except json.JSONDecodeError as e:
+                  print(f"WARNING: GOOGLE_SERVICES_JSON secret contains malformed JSON: {e}")
+                  print("Using placeholder — app will not connect to Firebase at runtime")
+          PYEOF
 
       # Write the Maps API key into local.properties
       - name: Write local.properties
