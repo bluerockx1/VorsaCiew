@@ -34,11 +34,12 @@ jobs:
       # Overwrite placeholder google-services.json with real one from secret (when available)
       # The secret should contain the raw JSON content of google-services.json (no base64 needed)
       - name: Write google-services.json (from secret if set)
-        if: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          fi
 
       # Write the Maps API key into local.properties
       - name: Write local.properties
