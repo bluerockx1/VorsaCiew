@@ -63,6 +63,7 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
     val isOwn       = vm.isOwnProfile
     val isFollowing by vm.isFollowing.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
+    val postRows    = remember(posts) { posts.chunked(3) }
 
     Scaffold(
         topBar = {
@@ -201,8 +202,7 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
                 when (selectedTab) {
                     0 -> {
                         // Post grid — simple Column rows of 3 to avoid nested scroll crash
-                        val rows = remember(posts) { posts.chunked(3) }
-                        items(rows) { row ->
+                        items(postRows) { row ->
                             Row(Modifier.fillMaxWidth()) {
                                 row.forEach { post ->
                                     Box(
