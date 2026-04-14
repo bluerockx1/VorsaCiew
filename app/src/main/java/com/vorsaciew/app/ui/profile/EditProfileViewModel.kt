@@ -1,8 +1,10 @@
 package com.vorsaciew.app.ui.profile
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.storage.FirebaseStorage
 import com.vorsaciew.app.data.model.User
 import com.vorsaciew.app.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 sealed class EditProfileState {
@@ -23,7 +26,8 @@ sealed class EditProfileState {
 @HiltViewModel
 class EditProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val storage: FirebaseStorage
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<EditProfileState>(EditProfileState.Idle)
@@ -35,6 +39,14 @@ class EditProfileViewModel @Inject constructor(
     private val _bio = MutableStateFlow("")
     val bio: StateFlow<String> = _bio.asStateFlow()
 
+    /** URI of a locally-picked image (not yet uploaded). */
+    private val _pendingAvatarUri = MutableStateFlow<Uri?>(null)
+    val pendingAvatarUri: StateFlow<Uri?> = _pendingAvatarUri.asStateFlow()
+
+    /** The current saved avatar URL (from Firestore). */
+    private val _savedAvatarUrl = MutableStateFlow("")
+    val savedAvatarUrl: StateFlow<String> = _savedAvatarUrl.asStateFlow()
+
     init {
         val uid = auth.currentUser?.uid
         if (uid != null) {
@@ -43,6 +55,7 @@ class EditProfileViewModel @Inject constructor(
                     if (user != null && _displayName.value.isEmpty()) {
                         _displayName.value = user.displayName
                         _bio.value = user.bio
+                        _savedAvatarUrl.value = user.avatarUrl
                     }
                 }
             }
@@ -52,19 +65,33 @@ class EditProfileViewModel @Inject constructor(
     fun setDisplayName(value: String) { _displayName.value = value }
     fun setBio(value: String) { _bio.value = value }
 
+    /** Called when the user picks an image from the photo picker. */
+    fun pickAvatar(uri: Uri) { _pendingAvatarUri.value = uri }
+
     fun save() {
         val uid = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             _state.value = EditProfileState.Saving
-            // Use first() to get one snapshot without keeping the flow open
-            val current = userRepository.getUserFlow(uid).first()
-            val updated = (current ?: User(uid = uid)).copy(
-                displayName = _displayName.value.trim(),
-                bio         = _bio.value.trim()
-            )
-            userRepository.updateUser(updated)
-                .onSuccess { _state.value = EditProfileState.Success }
-                .onFailure { _state.value = EditProfileState.Error(it.message ?: "Save failed") }
+            try {
+                // Upload new avatar if one was picked
+                val finalAvatarUrl = _pendingAvatarUri.value?.let { uri ->
+                    val ref = storage.reference.child("avatars/$uid.jpg")
+                    ref.putFile(uri).await()
+                    ref.downloadUrl.await().toString()
+                } ?: _savedAvatarUrl.value
+
+                val current = userRepository.getUserFlow(uid).first()
+                val updated = (current ?: User(uid = uid)).copy(
+                    displayName = _displayName.value.trim(),
+                    bio         = _bio.value.trim(),
+                    avatarUrl   = finalAvatarUrl
+                )
+                userRepository.updateUser(updated)
+                    .onSuccess { _state.value = EditProfileState.Success }
+                    .onFailure { _state.value = EditProfileState.Error(it.message ?: "Save failed") }
+            } catch (e: Exception) {
+                _state.value = EditProfileState.Error(e.message ?: "Save failed")
+            }
         }
     }
 }

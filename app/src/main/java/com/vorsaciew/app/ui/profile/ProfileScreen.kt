@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Message
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -79,6 +81,14 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
                     }
                 }
             )
+        }
+        floatingActionButton = {
+            // Show + FAB only on own Garage tab so user can add vehicles
+            if (isOwn && selectedTab == 1) {
+                FloatingActionButton(onClick = { navController.navigate(Screen.AddVehicle.route) }) {
+                    Icon(Icons.Default.Add, "Add vehicle")
+                }
+            }
         }
     ) { padding ->
         user?.let { u ->
@@ -191,7 +201,7 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
                 when (selectedTab) {
                     0 -> {
                         // Post grid — simple Column rows of 3 to avoid nested scroll crash
-                        val rows = posts.chunked(3)
+                        val rows = remember(posts) { posts.chunked(3) }
                         items(rows) { row ->
                             Row(Modifier.fillMaxWidth()) {
                                 row.forEach { post ->

@@ -69,9 +69,11 @@ fun MapScreen(navController: NavController, vm: MapViewModel = hiltViewModel()) 
     val nearbyDrivers by vm.nearbyDrivers.collectAsStateWithLifecycle()
     val nearbyEvents  by vm.nearbyEvents.collectAsStateWithLifecycle()
     val filterRadius  by vm.filterRadiusMi.collectAsStateWithLifecycle()
+    val currentLatLng by vm.currentLatLng.collectAsStateWithLifecycle()
 
     var showFilterSheet  by remember { mutableStateOf(false) }
     var selectedDriver   by remember { mutableStateOf<LiveDriverPin?>(null) }
+    var hasCenteredOnLocation by remember { mutableStateOf(false) }
 
     // Hold MapView and overlay references so we can drive them imperatively
     val mapViewRef         = remember { mutableStateOf<MapView?>(null) }
@@ -81,6 +83,15 @@ fun MapScreen(navController: NavController, vm: MapViewModel = hiltViewModel()) 
     LaunchedEffect(locationPerms.allPermissionsGranted) {
         if (locationPerms.allPermissionsGranted) vm.startLocationUpdates()
         else locationPerms.launchMultiplePermissionRequest()
+    }
+
+    // Center map on first real GPS fix (replaces the SF hardcoded default)
+    LaunchedEffect(currentLatLng) {
+        if (!hasCenteredOnLocation && currentLatLng != null) {
+            val (lat, lng) = currentLatLng!!
+            mapViewRef.value?.controller?.animateTo(GeoPoint(lat, lng))
+            hasCenteredOnLocation = true
+        }
     }
 
     // Center map when FAB is tapped
