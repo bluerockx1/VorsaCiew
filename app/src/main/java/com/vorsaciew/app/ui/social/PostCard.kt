@@ -44,8 +44,8 @@ import com.vorsaciew.app.data.model.Post
 @Composable
 fun PostCard(
     post: Post,
-    currentUid: String,
-    isLiked: Boolean,
+    currentUid: String = "",
+    isLiked: Boolean = false,
     onLike: () -> Unit,
     onComment: () -> Unit,
     onAuthorClick: () -> Unit,

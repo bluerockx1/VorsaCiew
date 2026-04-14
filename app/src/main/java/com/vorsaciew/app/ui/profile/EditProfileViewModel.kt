@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -35,12 +36,14 @@ class EditProfileViewModel @Inject constructor(
     val bio: StateFlow<String> = _bio.asStateFlow()
 
     init {
-        val uid = auth.currentUser?.uid ?: return
-        viewModelScope.launch {
-            userRepository.getUserFlow(uid).collect { user ->
-                if (user != null && _displayName.value.isEmpty()) {
-                    _displayName.value = user.displayName
-                    _bio.value = user.bio
+        val uid = auth.currentUser?.uid
+        if (uid != null) {
+            viewModelScope.launch {
+                userRepository.getUserFlow(uid).collect { user ->
+                    if (user != null && _displayName.value.isEmpty()) {
+                        _displayName.value = user.displayName
+                        _bio.value = user.bio
+                    }
                 }
             }
         }
@@ -53,17 +56,15 @@ class EditProfileViewModel @Inject constructor(
         val uid = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             _state.value = EditProfileState.Saving
-            // Fetch current user to preserve all other fields
-            userRepository.getUserFlow(uid).collect { current ->
-                val updated = (current ?: User(uid = uid)).copy(
-                    displayName = _displayName.value.trim(),
-                    bio         = _bio.value.trim()
-                )
-                userRepository.updateUser(updated)
-                    .onSuccess { _state.value = EditProfileState.Success }
-                    .onFailure { _state.value = EditProfileState.Error(it.message ?: "Save failed") }
-                return@collect  // only handle first emission
-            }
+            // Use first() to get one snapshot without keeping the flow open
+            val current = userRepository.getUserFlow(uid).first()
+            val updated = (current ?: User(uid = uid)).copy(
+                displayName = _displayName.value.trim(),
+                bio         = _bio.value.trim()
+            )
+            userRepository.updateUser(updated)
+                .onSuccess { _state.value = EditProfileState.Success }
+                .onFailure { _state.value = EditProfileState.Error(it.message ?: "Save failed") }
         }
     }
 }
