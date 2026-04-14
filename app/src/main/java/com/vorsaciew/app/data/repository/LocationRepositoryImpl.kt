@@ -29,7 +29,21 @@ class LocationRepositoryImpl @Inject constructor(
             override fun onDataChange(snapshot: DataSnapshot) {
                 val currentUid = auth.currentUser?.uid
                 val pins = snapshot.children.mapNotNull { child ->
-                    child.getValue(LiveDriverPin::class.java)
+                    // Manual field extraction avoids kotlin-reflect issues with val data classes.
+                    // FirebaseDatabase Java reflection cannot inject into final (val) Kotlin fields,
+                    // so getValue(Class) would return all-default values — we bypass it entirely.
+                    val uid = child.child("uid").getValue(String::class.java)
+                        ?: return@mapNotNull null
+                    val lat      = child.child("latitude").getValue(Double::class.java) ?: 0.0
+                    val lng      = child.child("longitude").getValue(Double::class.java) ?: 0.0
+                    val visible  = child.child("isVisible").getValue(Boolean::class.java) ?: true
+                    val name     = child.child("displayName").getValue(String::class.java) ?: ""
+                    val avatar   = child.child("avatarUrl").getValue(String::class.java) ?: ""
+                    val vehicle  = child.child("vehicleLabel").getValue(String::class.java) ?: ""
+                    val heading  = child.child("heading").getValue(Float::class.java) ?: 0f
+                    val speed    = child.child("speedKmh").getValue(Float::class.java) ?: 0f
+                    val lastSeen = child.child("lastSeen").getValue(Long::class.java) ?: 0L
+                    LiveDriverPin(uid, name, avatar, lat, lng, "", vehicle, heading, speed, visible, lastSeen)
                 }.filter { pin ->
                     pin.isVisible &&
                     pin.uid != currentUid &&
@@ -47,13 +61,14 @@ class LocationRepositoryImpl @Inject constructor(
         uid: String, lat: Double, lng: Double, heading: Float, speedKmh: Float
     ) {
         val update = mapOf(
-            "uid"          to uid,
-            "latitude"     to lat,
-            "longitude"    to lng,
-            "heading"      to heading,
-            "speedKmh"     to speedKmh,
-            "isVisible"    to true,
-            "lastSeen"     to System.currentTimeMillis()
+            "uid"         to uid,
+            "displayName" to (auth.currentUser?.displayName ?: ""),
+            "latitude"    to lat,
+            "longitude"   to lng,
+            "heading"     to heading,
+            "speedKmh"    to speedKmh,
+            "isVisible"   to true,
+            "lastSeen"    to System.currentTimeMillis()
         )
         driversRef.child(uid).updateChildren(update).await()
     }

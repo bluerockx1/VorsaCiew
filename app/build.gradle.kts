@@ -73,6 +73,7 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlin.reflect)
 
     debugImplementation(libs.compose.ui.tooling)
 }

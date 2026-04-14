@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -50,6 +51,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 import javax.inject.Inject
 
 @HiltViewModel
@@ -71,60 +77,132 @@ class RallyDetailViewModel @Inject constructor(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RallyDetailScreen(navController: NavController, vm: RallyDetailViewModel = hiltViewModel()) {
-    val rally      by vm.rally.collectAsStateWithLifecycle()
+    val rally       by vm.rally.collectAsStateWithLifecycle()
     val isAttending by vm.isAttending.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(rally?.title ?: "Rally") }, navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") }
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.Default.ArrowBack, "Back")
+                }
             })
         }
     ) { padding ->
         rally?.let { r ->
+            // Collect checkpoints with real coordinates for the map
+            val mappableStops = r.checkpoints
+                .sortedBy { it.order }
+                .filter { it.latitude != 0.0 || it.longitude != 0.0 }
+            val routePoints = mappableStops.map { GeoPoint(it.latitude, it.longitude) }
+
             LazyColumn(Modifier.fillMaxSize().padding(padding)) {
+                // Route map — only shown when at least one checkpoint has coordinates
+                if (routePoints.isNotEmpty()) {
+                    item {
+                        AndroidView(
+                            factory = { ctx ->
+                                MapView(ctx).apply {
+                                    setTileSource(TileSourceFactory.MAPNIK)
+                                    setMultiTouchControls(true)
+
+                                    // Draw route polyline in brand red
+                                    if (routePoints.size >= 2) {
+                                        overlays.add(Polyline().apply {
+                                            setPoints(routePoints)
+                                            outlinePaint.color =
+                                                android.graphics.Color.parseColor("#BF3636")
+                                            outlinePaint.strokeWidth = 8f
+                                        })
+                                    }
+
+                                    // Checkpoint markers
+                                    mappableStops.forEach { stop ->
+                                        overlays.add(Marker(this).apply {
+                                            position = GeoPoint(stop.latitude, stop.longitude)
+                                            title   = stop.name.ifEmpty { stop.type.label }
+                                            snippet = stop.address.ifEmpty { stop.type.label }
+                                        })
+                                    }
+
+                                    // Fit map to the route
+                                    controller.setCenter(routePoints.first())
+                                    controller.setZoom(if (routePoints.size == 1) 13.0 else 9.0)
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp)
+                        )
+                    }
+                }
+
                 item {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text(r.title, style = MaterialTheme.typography.headlineSmall)
-                        Text("${r.attendeeIds.size} attending · ${r.checkpoints.size} stops",
+                        Text(
+                            "${r.attendeeIds.size} attending · ${r.checkpoints.size} stops",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         if (r.description.isNotEmpty())
                             Text(r.description, style = MaterialTheme.typography.bodyMedium)
                         if (isAttending) {
-                            OutlinedButton(onClick = { vm.leave() }, Modifier.fillMaxWidth()) { Text("Leave Rally") }
+                            OutlinedButton(onClick = { vm.leave() }, Modifier.fillMaxWidth()) {
+                                Text("Leave Rally")
+                            }
                         } else {
-                            Button(onClick = { vm.join() }, Modifier.fillMaxWidth()) { Text("Join Rally") }
+                            Button(onClick = { vm.join() }, Modifier.fillMaxWidth()) {
+                                Text("Join Rally")
+                            }
                         }
                         HorizontalDivider()
                         Text("Route", style = MaterialTheme.typography.titleMedium)
                     }
                 }
+
                 itemsIndexed(r.checkpoints.sortedBy { it.order }) { index, stop ->
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         val icon = when (stop.type) {
-                            CheckpointType.START    -> Icons.Default.FlagCircle
-                            CheckpointType.FINISH   -> Icons.Default.SportsScore
+                            CheckpointType.START     -> Icons.Default.FlagCircle
+                            CheckpointType.FINISH    -> Icons.Default.SportsScore
                             CheckpointType.REST_STOP -> Icons.Default.Restaurant
-                            CheckpointType.FUEL     -> Icons.Default.LocalGasStation
-                            else                    -> Icons.Default.Place
+                            CheckpointType.FUEL      -> Icons.Default.LocalGasStation
+                            else                     -> Icons.Default.Place
                         }
-                        Icon(icon, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                        Icon(icon, null, Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary)
                         Column(Modifier.weight(1f)) {
-                            Text(stop.name.ifEmpty { "Stop ${index + 1}" }, style = MaterialTheme.typography.bodyMedium)
-                            Text(stop.type.label, style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (stop.address.isNotEmpty())
-                                Text(stop.address, style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                stop.name.ifEmpty { "Stop ${index + 1}" },
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                stop.type.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (stop.address.isNotEmpty()) {
+                                Text(
+                                    stop.address,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                     HorizontalDivider(Modifier.padding(start = 52.dp))
                 }
+
                 item { Box(Modifier.height(80.dp)) }
             }
         } ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -8,6 +8,7 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.Priority
+import com.google.firebase.auth.FirebaseAuth
 import com.vorsaciew.app.data.model.Event
 import com.vorsaciew.app.data.model.LiveDriverPin
 import com.vorsaciew.app.data.repository.EventRepository
@@ -33,7 +34,8 @@ private const val MI_TO_KM = 1.60934
 class MapViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
     private val eventRepository: EventRepository,
-    private val fusedLocationClient: FusedLocationProviderClient
+    private val fusedLocationClient: FusedLocationProviderClient,
+    private val auth: FirebaseAuth
 ) : ViewModel() {
 
     /** Radius slider is in miles; repositories expect km — convert on the way in. */
@@ -65,6 +67,19 @@ class MapViewModel @Inject constructor(
         override fun onLocationResult(result: LocationResult) {
             result.lastLocation?.let { loc ->
                 _currentLatLng.value = loc.latitude to loc.longitude
+                // Publish to RTDB so other users can see this driver on their maps
+                val uid = auth.currentUser?.uid ?: return@let
+                viewModelScope.launch {
+                    try {
+                        locationRepository.updateOwnLocation(
+                            uid      = uid,
+                            lat      = loc.latitude,
+                            lng      = loc.longitude,
+                            heading  = loc.bearing,
+                            speedKmh = loc.speed * 3.6f
+                        )
+                    } catch (_: Exception) { /* swallow — map still works offline */ }
+                }
             }
         }
     }
@@ -81,6 +96,12 @@ class MapViewModel @Inject constructor(
 
     fun stopLocationUpdates() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
+        // Mark ourselves invisible when leaving the map
+        auth.currentUser?.uid?.let { uid ->
+            viewModelScope.launch {
+                try { locationRepository.setVisible(uid, false) } catch (_: Exception) { }
+            }
+        }
     }
 
     fun setFilterRadius(miles: Double) { _filterRadiusMi.value = miles }

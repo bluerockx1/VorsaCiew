@@ -68,6 +68,10 @@ accompanist-permissions = { group = "com.google.accompanist", name = "accompanis
 # Serialization
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version = "1.7.1" }
 
+# kotlin-reflect — required for Firebase Firestore KTX to deserialize Kotlin data classes
+# (val fields are final; without this, toObjects() returns all-default values)
+kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
