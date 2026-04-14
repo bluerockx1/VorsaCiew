@@ -40,10 +40,12 @@ class CreateEventViewModel @Inject constructor(
     @SuppressLint("MissingPermission")
     private fun fetchLocation() {
         viewModelScope.launch {
-            fusedLocationClient.lastLocation.await()?.let { loc ->
-                cachedLat = loc.latitude
-                cachedLng = loc.longitude
-            }
+            try {
+                fusedLocationClient.lastLocation.await()?.let { loc ->
+                    cachedLat = loc.latitude
+                    cachedLng = loc.longitude
+                }
+            } catch (_: Exception) { /* location permission denied or unavailable */ }
         }
     }
 
@@ -56,28 +58,33 @@ class CreateEventViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             _formState.value = CreateEventState.Loading
+            try {
+                // Best-effort re-fetch in case location wasn't ready on init
+                if (cachedLat == 0.0 && cachedLng == 0.0) {
+                    try {
+                        @SuppressLint("MissingPermission")
+                        val loc = fusedLocationClient.lastLocation.await()
+                        cachedLat = loc?.latitude ?: 0.0
+                        cachedLng = loc?.longitude ?: 0.0
+                    } catch (_: Exception) { /* proceed with 0,0 */ }
+                }
 
-            // Re-fetch location right before submission in case it wasn't ready on init
-            if (cachedLat == 0.0 && cachedLng == 0.0) {
-                @SuppressLint("MissingPermission")
-                val loc = fusedLocationClient.lastLocation.await()
-                cachedLat = loc?.latitude ?: 0.0
-                cachedLng = loc?.longitude ?: 0.0
+                val event = Event(
+                    title        = title,
+                    description  = description,
+                    type         = type,
+                    locationName = locationName,
+                    address      = address,
+                    latitude     = cachedLat,
+                    longitude    = cachedLng,
+                    startTime    = System.currentTimeMillis() + 3_600_000L
+                )
+                eventRepository.createEvent(event)
+                    .onSuccess { id -> _formState.value = CreateEventState.Success(id) }
+                    .onFailure { _formState.value = CreateEventState.Error(it.message ?: "Failed to create event") }
+            } catch (e: Exception) {
+                _formState.value = CreateEventState.Error(e.message ?: "Failed to create event")
             }
-
-            val event = Event(
-                title        = title,
-                description  = description,
-                type         = type,
-                locationName = locationName,
-                address      = address,
-                latitude     = cachedLat,
-                longitude    = cachedLng,
-                startTime    = System.currentTimeMillis() + 3_600_000L
-            )
-            eventRepository.createEvent(event)
-                .onSuccess { id -> _formState.value = CreateEventState.Success(id) }
-                .onFailure { _formState.value = CreateEventState.Error(it.message ?: "Failed to create event") }
         }
     }
 }

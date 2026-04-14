@@ -55,9 +55,11 @@ class EventsViewModel @Inject constructor(
     @SuppressLint("MissingPermission")
     private fun fetchLocation() {
         viewModelScope.launch {
-            fusedLocationClient.lastLocation.await()?.let { loc ->
-                _location.value = loc.latitude to loc.longitude
-            }
+            try {
+                fusedLocationClient.lastLocation.await()?.let { loc ->
+                    _location.value = loc.latitude to loc.longitude
+                }
+            } catch (_: Exception) { /* location permission denied or unavailable */ }
         }
     }
 

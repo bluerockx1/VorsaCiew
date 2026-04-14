@@ -1,5 +1,6 @@
 package com.vorsaciew.app.ui.profile
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.vorsaciew.app.data.model.User
 import com.vorsaciew.app.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +29,8 @@ sealed class EditProfileState {
 class EditProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val auth: FirebaseAuth,
-    private val storage: FirebaseStorage
+    private val storage: FirebaseStorage,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<EditProfileState>(EditProfileState.Idle)
@@ -73,10 +76,13 @@ class EditProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = EditProfileState.Saving
             try {
-                // Upload new avatar if one was picked
+                // Upload new avatar if one was picked.
+                // Use putStream via ContentResolver to handle content:// URIs reliably.
                 val finalAvatarUrl = _pendingAvatarUri.value?.let { uri ->
+                    val stream = context.contentResolver.openInputStream(uri)
+                        ?: throw Exception("Could not open image")
                     val ref = storage.reference.child("avatars/$uid.jpg")
-                    ref.putFile(uri).await()
+                    stream.use { ref.putStream(it).await() }
                     ref.downloadUrl.await().toString()
                 } ?: _savedAvatarUrl.value
 

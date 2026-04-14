@@ -2,7 +2,6 @@ package com.vorsaciew.app.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.vorsaciew.app.data.model.BuildLog
 import com.vorsaciew.app.data.model.Modification
 import com.vorsaciew.app.data.model.Vehicle
@@ -25,9 +24,10 @@ class VehicleRepositoryImpl @Inject constructor(
     override fun getVehiclesForUser(uid: String): Flow<List<Vehicle>> = callbackFlow {
         val listener = vehicles
             .whereEqualTo("ownerId", uid)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(Vehicle::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                val sorted = snap.toObjects(Vehicle::class.java).sortedByDescending { it.createdAt }
+                trySend(sorted)
             }
         awaitClose { listener.remove() }
     }
