@@ -19,11 +19,13 @@ class ClubRepositoryImpl @Inject constructor(
     private val clubs = firestore.collection("clubs")
 
     override fun getPublicClubs(): Flow<List<Club>> = callbackFlow {
-        val listener = clubs.whereEqualTo("isPrivate", false)
-            .orderBy("memberCount", com.google.firebase.firestore.Query.Direction.DESCENDING)
+        val listener = clubs
+            .whereEqualTo("isPrivate", false)
             .limit(50)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(Club::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                val sorted = snap.toObjects(Club::class.java).sortedByDescending { it.memberCount }
+                trySend(sorted)
             }
         awaitClose { listener.remove() }
     }
@@ -37,8 +39,9 @@ class ClubRepositoryImpl @Inject constructor(
 
     override fun getClubsForUser(uid: String): Flow<List<Club>> = callbackFlow {
         val listener = clubs.whereArrayContains("memberIds", uid)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(Club::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                trySend(snap.toObjects(Club::class.java))
             }
         awaitClose { listener.remove() }
     }

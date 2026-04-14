@@ -18,8 +18,6 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-
-        manifestPlaceholders["MAPS_API_KEY"] = project.findProperty("MAPS_API_KEY") ?: ""
     }
 
     buildTypes {
@@ -59,9 +57,15 @@ dependencies {
     implementation(libs.firebase.storage)
     implementation(libs.firebase.messaging)
 
-    implementation(libs.maps.compose)
-    implementation(libs.play.services.maps)
+    // Location (FusedLocationProviderClient — no Maps SDK needed)
     implementation(libs.play.services.location)
+
+    // OSMDroid (free OpenStreetMap tiles, no API key)
+    implementation(libs.osmdroid)
+
+    // OkHttp for networking
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.sse)
 
     implementation(libs.coil.compose)
     implementation(libs.coroutines.android)

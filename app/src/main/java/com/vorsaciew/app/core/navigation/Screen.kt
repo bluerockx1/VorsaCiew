@@ -15,6 +15,8 @@ sealed class Screen(val route: String) {
         fun createRoute(userId: String) = "profile/$userId"
     }
 
+    object EditProfile : Screen("profile/edit")
+
     // Events
     object EventDetail  : Screen("event/{eventId}") {
         fun createRoute(id: String) = "event/$id"

@@ -53,11 +53,6 @@ jobs:
                   print("Using placeholder — app will not connect to Firebase at runtime")
           PYEOF
 
-      # Write the Maps API key into local.properties
-      - name: Write local.properties
-        run: |
-          echo "MAPS_API_KEY=${{ secrets.MAPS_API_KEY }}" > local.properties
-
       - name: Make gradlew executable
         run: chmod +x gradlew
 

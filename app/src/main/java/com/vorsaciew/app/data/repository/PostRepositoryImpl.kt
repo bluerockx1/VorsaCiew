@@ -9,7 +9,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,8 +24,9 @@ class PostRepositoryImpl @Inject constructor(
         val listener = posts
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(50)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(Post::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                trySend(snap.toObjects(Post::class.java))
             }
         awaitClose { listener.remove() }
     }
@@ -34,9 +34,9 @@ class PostRepositoryImpl @Inject constructor(
     override fun getPostsForUser(uid: String): Flow<List<Post>> = callbackFlow {
         val listener = posts
             .whereEqualTo("authorId", uid)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(Post::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                trySend(snap.toObjects(Post::class.java).sortedByDescending { it.createdAt })
             }
         awaitClose { listener.remove() }
     }
@@ -44,9 +44,9 @@ class PostRepositoryImpl @Inject constructor(
     override fun getPostsForClub(clubId: String): Flow<List<Post>> = callbackFlow {
         val listener = posts
             .whereEqualTo("clubId", clubId)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(Post::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                trySend(snap.toObjects(Post::class.java).sortedByDescending { it.createdAt })
             }
         awaitClose { listener.remove() }
     }
@@ -61,8 +61,9 @@ class PostRepositoryImpl @Inject constructor(
     override fun getComments(postId: String): Flow<List<PostComment>> = callbackFlow {
         val listener = posts.document(postId).collection("comments")
             .orderBy("timestamp", Query.Direction.ASCENDING)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(PostComment::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                trySend(snap.toObjects(PostComment::class.java))
             }
         awaitClose { listener.remove() }
     }
@@ -70,13 +71,18 @@ class PostRepositoryImpl @Inject constructor(
     override suspend fun createPost(post: Post): Result<String> = runCatching {
         val ref = posts.document()
         val uid = auth.currentUser?.uid ?: error("Not authenticated")
+        val userDoc = firestore.collection("users").document(uid).get().await()
+        val displayName = userDoc.getString("displayName")?.ifEmpty { null }
+            ?: userDoc.getString("username") ?: ""
+        val avatarUrl = userDoc.getString("avatarUrl") ?: ""
         val withId = post.copy(
-            id        = ref.id,
-            authorId  = uid,
-            createdAt = System.currentTimeMillis()
+            id              = ref.id,
+            authorId        = uid,
+            authorName      = displayName,
+            authorAvatarUrl = avatarUrl,
+            createdAt       = System.currentTimeMillis()
         )
         ref.set(withId).await()
-        // Increment post count on user profile
         firestore.collection("users").document(uid)
             .update("postCount", com.google.firebase.firestore.FieldValue.increment(1))
             .await()
@@ -102,12 +108,18 @@ class PostRepositoryImpl @Inject constructor(
 
     override suspend fun addComment(postId: String, comment: PostComment): Result<Unit> = runCatching {
         val uid = auth.currentUser?.uid ?: error("Not authenticated")
+        val userDoc = firestore.collection("users").document(uid).get().await()
+        val displayName = userDoc.getString("displayName")?.ifEmpty { null }
+            ?: userDoc.getString("username") ?: ""
+        val avatarUrl = userDoc.getString("avatarUrl") ?: ""
         val ref = posts.document(postId).collection("comments").document()
         val withId = comment.copy(
-            id        = ref.id,
-            postId    = postId,
-            authorId  = uid,
-            timestamp = System.currentTimeMillis()
+            id              = ref.id,
+            postId          = postId,
+            authorId        = uid,
+            authorName      = displayName,
+            authorAvatarUrl = avatarUrl,
+            timestamp       = System.currentTimeMillis()
         )
         ref.set(withId).await()
         posts.document(postId).update(

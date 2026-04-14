@@ -12,10 +12,10 @@ import com.vorsaciew.app.data.repository.PostRepository
 import com.vorsaciew.app.data.repository.UserRepository
 import com.vorsaciew.app.data.repository.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.navigation.NavController
@@ -43,16 +43,38 @@ class ProfileViewModel @Inject constructor(
     val vehicles: StateFlow<List<Vehicle>> = vehicleRepository.getVehiclesForUser(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val isOwnProfile: StateFlow<Boolean> = flow {
-        emit(auth.currentUser?.uid == userId)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val isOwnProfile: Boolean get() = auth.currentUser?.uid == userId
 
-    val isFollowing: StateFlow<Boolean> = flow {
-        emit(userRepository.isFollowing(userId))
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    private val _isFollowing = MutableStateFlow(false)
+    val isFollowing: StateFlow<Boolean> = _isFollowing.asStateFlow()
 
-    fun follow()   { viewModelScope.launch { userRepository.followUser(userId) } }
-    fun unfollow() { viewModelScope.launch { userRepository.unfollowUser(userId) } }
+    init {
+        if (userId.isNotEmpty() && !isOwnProfile) {
+            viewModelScope.launch {
+                _isFollowing.value = userRepository.isFollowing(userId)
+            }
+        }
+    }
+
+    fun follow() {
+        viewModelScope.launch {
+            _isFollowing.value = true  // optimistic
+            userRepository.followUser(userId)
+                .onFailure { _isFollowing.value = false }
+        }
+    }
+
+    fun unfollow() {
+        viewModelScope.launch {
+            _isFollowing.value = false  // optimistic
+            userRepository.unfollowUser(userId)
+                .onFailure { _isFollowing.value = true }
+        }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch { postRepository.deletePost(postId) }
+    }
 
     fun startDm(navController: NavController) {
         viewModelScope.launch {

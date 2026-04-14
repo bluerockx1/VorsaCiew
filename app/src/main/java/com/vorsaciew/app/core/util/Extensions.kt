@@ -19,6 +19,10 @@ fun distanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     return R * 2 * atan2(sqrt(a), sqrt(1 - a))
 }
 
+/** Haversine distance in miles. */
+fun distanceMiles(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
+    distanceKm(lat1, lon1, lat2, lon2) * 0.621371
+
 fun Long.toFormattedDate(pattern: String = "MMM d, yyyy"): String =
     SimpleDateFormat(pattern, Locale.getDefault()).format(Date(this))
 

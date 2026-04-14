@@ -1,5 +1,6 @@
 package com.vorsaciew.app.ui.profile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,16 +14,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Message
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -61,7 +58,7 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
     val user        by vm.user.collectAsStateWithLifecycle()
     val posts       by vm.posts.collectAsStateWithLifecycle()
     val vehicles    by vm.vehicles.collectAsStateWithLifecycle()
-    val isOwn       by vm.isOwnProfile.collectAsStateWithLifecycle()
+    val isOwn       = vm.isOwnProfile
     val isFollowing by vm.isFollowing.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -122,13 +119,21 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(u.displayName.ifEmpty { u.username },
-                                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text("@${u.username}", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                u.displayName.ifEmpty { u.username },
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "@${u.username}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                         if (isOwn) {
-                            OutlinedButton(onClick = {}) { Text("Edit Profile") }
+                            OutlinedButton(onClick = { navController.navigate(Screen.EditProfile.route) }) {
+                                Text("Edit Profile")
+                            }
                         } else {
                             if (isFollowing) {
                                 OutlinedButton(onClick = { vm.unfollow() }) { Text("Unfollow") }
@@ -139,8 +144,11 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
                     }
 
                     if (u.bio.isNotEmpty()) {
-                        Text(u.bio, Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            u.bio,
+                            Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
 
                     // Stats row
@@ -160,56 +168,77 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(Icons.Default.DirectionsCar, null, Modifier.size(16.dp))
-                        Text("${vehicles.size} vehicles", style = MaterialTheme.typography.bodySmall,
+                        Text(
+                            "${vehicles.size} vehicles",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f))
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     // Tabs
                     ScrollableTabRow(selectedTabIndex = selectedTab) {
                         listOf("Posts", "Garage").forEachIndexed { i, label ->
-                            Tab(selected = selectedTab == i, onClick = { selectedTab = i },
-                                text = { Text(label) })
+                            Tab(
+                                selected = selectedTab == i,
+                                onClick  = { selectedTab = i },
+                                text     = { Text(label) }
+                            )
                         }
                     }
                 }
 
                 when (selectedTab) {
                     0 -> {
-                        // Post grid — embed in a separate fixed-height container
-                        item {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(3),
-                                modifier = Modifier.fillMaxWidth().height(
-                                    (((posts.size + 2) / 3) * 130).dp
-                                ),
-                                userScrollEnabled = false
-                            ) {
-                                items(posts, key = { it.id }) { post ->
-                                    if (post.mediaUrls.isNotEmpty()) {
-                                        AsyncImage(
-                                            model = post.mediaUrls.first(),
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.aspectRatio(1f).padding(1.dp)
-                                        )
-                                    } else {
-                                        Surface(Modifier.aspectRatio(1f).padding(1.dp),
-                                            color = MaterialTheme.colorScheme.surfaceVariant) {
-                                            Text(post.caption.take(40),
-                                                Modifier.padding(4.dp),
-                                                style = MaterialTheme.typography.labelSmall)
+                        // Post grid — simple Column rows of 3 to avoid nested scroll crash
+                        val rows = posts.chunked(3)
+                        items(rows) { row ->
+                            Row(Modifier.fillMaxWidth()) {
+                                row.forEach { post ->
+                                    Box(
+                                        Modifier
+                                            .weight(1f)
+                                            .aspectRatio(1f)
+                                            .padding(1.dp)
+                                            .clickable {
+                                                navController.navigate(Screen.PostDetail.createRoute(post.id))
+                                            }
+                                    ) {
+                                        if (post.mediaUrls.isNotEmpty()) {
+                                            AsyncImage(
+                                                model = post.mediaUrls.first(),
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                        } else {
+                                            Surface(
+                                                Modifier.fillMaxSize(),
+                                                color = MaterialTheme.colorScheme.surfaceVariant
+                                            ) {
+                                                Text(
+                                                    post.caption.take(40),
+                                                    Modifier.padding(4.dp),
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            }
                                         }
                                     }
+                                }
+                                // Fill remaining cells in last row
+                                repeat(3 - row.size) {
+                                    Spacer(Modifier.weight(1f))
                                 }
                             }
                         }
                     }
                     1 -> {
                         items(vehicles, key = { it.id }) { vehicle ->
-                            VehicleCard(vehicle = vehicle, onClick = {
-                                navController.navigate(Screen.VehicleDetail.createRoute(vehicle.id))
-                            }, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+                            VehicleCard(
+                                vehicle  = vehicle,
+                                onClick  = { navController.navigate(Screen.VehicleDetail.createRoute(vehicle.id)) },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                            )
                         }
                     }
                 }
@@ -225,7 +254,10 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
 private fun StatItem(count: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(count, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

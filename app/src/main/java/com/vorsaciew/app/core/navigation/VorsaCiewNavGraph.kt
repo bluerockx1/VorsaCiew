@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -25,8 +26,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.vorsaciew.app.ui.auth.AuthViewModel
 import com.vorsaciew.app.ui.auth.AuthState
+import com.vorsaciew.app.ui.auth.AuthViewModel
 import com.vorsaciew.app.ui.auth.LoginScreen
 import com.vorsaciew.app.ui.auth.RegisterScreen
 import com.vorsaciew.app.ui.clubs.ClubDetailScreen
@@ -41,6 +42,7 @@ import com.vorsaciew.app.ui.garage.AddVehicleScreen
 import com.vorsaciew.app.ui.garage.GarageScreen
 import com.vorsaciew.app.ui.garage.VehicleDetailScreen
 import com.vorsaciew.app.ui.map.MapScreen
+import com.vorsaciew.app.ui.profile.EditProfileScreen
 import com.vorsaciew.app.ui.profile.ProfileScreen
 import com.vorsaciew.app.ui.rally.CreateRallyScreen
 import com.vorsaciew.app.ui.rally.RallyDetailScreen
@@ -67,14 +69,21 @@ fun VorsaCiewNavHost(
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val currentUid = (authState as? AuthState.Authenticated)?.uid ?: ""
 
+    // Redirect to Login whenever the user becomes unauthenticated
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Unauthenticated) {
+            navController.navigate(Screen.Login.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     val bottomTabs = listOf(
-        BottomNavItem(Screen.Map,    Icons.Default.Map,          "Map"),
-        BottomNavItem(Screen.Events, Icons.Default.Event,        "Events"),
-        BottomNavItem(Screen.Feed,   Icons.Default.DynamicFeed,  "Feed"),
-        BottomNavItem(Screen.Clubs,  Icons.Default.Group,        "Clubs"),
-        BottomNavItem(
-            Screen.Profile, Icons.Default.DirectionsCar, "Me"
-        ),
+        BottomNavItem(Screen.Map,    Icons.Default.Map,         "Map"),
+        BottomNavItem(Screen.Events, Icons.Default.Event,       "Events"),
+        BottomNavItem(Screen.Feed,   Icons.Default.DynamicFeed, "Feed"),
+        BottomNavItem(Screen.Clubs,  Icons.Default.Group,       "Clubs"),
+        BottomNavItem(Screen.Profile, Icons.Default.DirectionsCar, "Me"),
     )
 
     val startDestination = when (authState) {
@@ -94,7 +103,7 @@ fun VorsaCiewNavHost(
                         NavigationBarItem(
                             selected = currentRoute == item.screen.route ||
                                     (item.screen == Screen.Profile && currentRoute?.startsWith("profile/") == true),
-                            onClick = {
+                            onClick  = {
                                 navController.navigate(route) {
                                     launchSingleTop = true
                                     restoreState = true
@@ -128,6 +137,8 @@ fun VorsaCiewNavHost(
                 Screen.Profile.route,
                 arguments = listOf(navArgument("userId") { type = NavType.StringType })
             ) { ProfileScreen(navController) }
+
+            composable(Screen.EditProfile.route) { EditProfileScreen(navController) }
 
             // Events
             composable(
@@ -179,10 +190,10 @@ fun VorsaCiewNavHost(
                 Screen.Chat.route,
                 arguments = listOf(navArgument("roomId") { type = NavType.StringType })
             ) { ChatScreen(navController) }
-            composable(Screen.ChatList.route)     { ChatListScreen(navController) }
-            composable(Screen.Notifications.route){ NotificationsScreen(navController) }
-            composable(Screen.Settings.route)     { SettingsScreen(navController, authViewModel) }
-            composable(Screen.Search.route)       { SearchScreen(navController) }
+            composable(Screen.ChatList.route)      { ChatListScreen(navController) }
+            composable(Screen.Notifications.route) { NotificationsScreen(navController) }
+            composable(Screen.Settings.route)      { SettingsScreen(navController, authViewModel) }
+            composable(Screen.Search.route)        { SearchScreen(navController) }
         }
     }
 }

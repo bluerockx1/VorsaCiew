@@ -30,7 +30,9 @@ import com.vorsaciew.app.core.navigation.Screen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(navController: NavController, vm: FeedViewModel = hiltViewModel()) {
-    val posts by vm.posts.collectAsStateWithLifecycle()
+    val posts    by vm.posts.collectAsStateWithLifecycle()
+    val likedIds by vm.likedIds.collectAsStateWithLifecycle()
+    val currentUid = vm.currentUid
 
     Scaffold(
         topBar = {
@@ -56,21 +58,24 @@ fun FeedScreen(navController: NavController, vm: FeedViewModel = hiltViewModel()
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
-            items(posts, key = { it.id }) { post ->
-                PostCard(
-                    post       = post,
-                    onLike     = { vm.toggleLike(post.id) },
-                    onComment  = { navController.navigate(Screen.PostDetail.createRoute(post.id)) },
-                    onAuthorClick = { navController.navigate(Screen.Profile.createRoute(post.authorId)) }
-                )
-                HorizontalDivider()
-            }
             if (posts.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxSize().padding(32.dp)) {
                         Text("No posts yet. Be the first!")
                     }
                 }
+            }
+            items(posts, key = { it.id }) { post ->
+                PostCard(
+                    post          = post,
+                    currentUid    = currentUid,
+                    isLiked       = post.id in likedIds,
+                    onLike        = { vm.toggleLike(post.id) },
+                    onComment     = { navController.navigate(Screen.PostDetail.createRoute(post.id)) },
+                    onAuthorClick = { navController.navigate(Screen.Profile.createRoute(post.authorId)) },
+                    onDelete      = { vm.deletePost(post.id) }
+                )
+                HorizontalDivider()
             }
         }
     }

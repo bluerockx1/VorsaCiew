@@ -2,13 +2,11 @@ package com.vorsaciew.app.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.vorsaciew.app.core.util.distanceKm
 import com.vorsaciew.app.data.model.Event
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,11 +23,11 @@ class EventRepositoryImpl @Inject constructor(
         callbackFlow {
             val listener = events
                 .whereEqualTo("isPublic", true)
-                .orderBy("startTime", Query.Direction.ASCENDING)
-                .addSnapshotListener { snap, _ ->
-                    val nearby = snap?.toObjects(Event::class.java)?.filter { e ->
+                .addSnapshotListener { snap, error ->
+                    if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                    val nearby = snap.toObjects(Event::class.java).filter { e ->
                         distanceKm(lat, lng, e.latitude, e.longitude) <= radiusKm
-                    } ?: emptyList()
+                    }.sortedBy { it.startTime }
                     trySend(nearby)
                 }
             awaitClose { listener.remove() }
@@ -45,9 +43,9 @@ class EventRepositoryImpl @Inject constructor(
     override fun getEventsForUser(uid: String): Flow<List<Event>> = callbackFlow {
         val listener = events
             .whereArrayContains("attendeeIds", uid)
-            .orderBy("startTime", Query.Direction.DESCENDING)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(Event::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                trySend(snap.toObjects(Event::class.java).sortedBy { it.startTime })
             }
         awaitClose { listener.remove() }
     }
@@ -55,9 +53,9 @@ class EventRepositoryImpl @Inject constructor(
     override fun getEventsForClub(clubId: String): Flow<List<Event>> = callbackFlow {
         val listener = events
             .whereEqualTo("clubId", clubId)
-            .orderBy("startTime", Query.Direction.ASCENDING)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(Event::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                trySend(snap.toObjects(Event::class.java).sortedBy { it.startTime })
             }
         awaitClose { listener.remove() }
     }

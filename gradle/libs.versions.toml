@@ -4,12 +4,13 @@ kotlin = "2.0.0"
 compose-bom = "2024.06.00"
 hilt = "2.51.1"
 firebase-bom = "33.1.2"
-maps-compose = "4.4.1"
 coil = "2.7.0"
 navigation = "2.8.0"
 lifecycle = "2.8.3"
 coroutines = "1.8.1"
 datastore = "1.1.1"
+osmdroid = "6.1.18"
+okhttp = "4.12.0"
 
 [libraries]
 # Compose BOM
@@ -41,10 +42,15 @@ firebase-database = { group = "com.google.firebase", name = "firebase-database-k
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage-ktx" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging-ktx" }
 
-# Maps
-maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "maps-compose" }
-play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version = "19.0.0" }
+# Location (still needed for FusedLocationProviderClient)
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version = "21.3.0" }
+
+# OSMDroid (free OpenStreetMap, no API key needed)
+osmdroid = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
+
+# OkHttp (HTTP + SSE for PocketBase, also used internally by Firebase)
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-sse = { group = "com.squareup.okhttp3", name = "okhttp-sse", version.ref = "okhttp" }
 
 # Coil
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
