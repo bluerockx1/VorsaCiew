@@ -81,7 +81,7 @@ fun ProfileScreen(navController: NavController, vm: ProfileViewModel = hiltViewM
                     }
                 }
             )
-        }
+        },
         floatingActionButton = {
             // Show + FAB only on own Garage tab so user can add vehicles
             if (isOwn && selectedTab == 1) {
