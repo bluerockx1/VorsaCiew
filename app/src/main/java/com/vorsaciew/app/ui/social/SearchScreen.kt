@@ -25,7 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -51,6 +52,7 @@ class SearchViewModel @Inject constructor(
     private val _results = MutableStateFlow<List<User>>(emptyList())
     val results: StateFlow<List<User>> = _results.asStateFlow()
     fun search(query: String) {
+        if (query.isBlank()) { _results.value = emptyList(); return }
         viewModelScope.launch { _results.value = userRepository.searchUsers(query) }
     }
 }
@@ -59,8 +61,12 @@ class SearchViewModel @Inject constructor(
 @Composable
 fun SearchScreen(navController: NavController, vm: SearchViewModel = hiltViewModel()) {
     var query   by remember { mutableStateOf("") }
-    val scope   = rememberCoroutineScope()
     val results by vm.results.collectAsStateWithLifecycle()
+
+    LaunchedEffect(query) {
+        delay(300)
+        vm.search(query)
+    }
 
     Scaffold(topBar = {
         TopAppBar(title = { Text("Search") }, navigationIcon = {
@@ -73,7 +79,7 @@ fun SearchScreen(navController: NavController, vm: SearchViewModel = hiltViewMod
         ) {
             OutlinedTextField(
                 value = query,
-                onValueChange = { query = it; scope.launch { vm.search(it) } },
+                onValueChange = { query = it },
                 label = { Text("Search drivers…") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),

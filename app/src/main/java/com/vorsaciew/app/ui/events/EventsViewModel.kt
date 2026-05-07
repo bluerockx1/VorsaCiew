@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -36,19 +36,20 @@ class EventsViewModel @Inject constructor(
     private val _filter = MutableStateFlow(EventFilter.NEARBY)
     val filter: StateFlow<EventFilter> = _filter.asStateFlow()
 
-    // Will be updated to real device location in init
     private val _location = MutableStateFlow(Pair(0.0, 0.0))
 
-    val events: StateFlow<List<Event>> = _filter.flatMapLatest { f ->
-        val uid = auth.currentUser?.uid ?: ""
-        val (lat, lng) = _location.value
-        when (f) {
-            EventFilter.NEARBY   -> eventRepository.getEventsNearby(lat, lng, 80.0)   // ~50 mi
-            EventFilter.UPCOMING -> eventRepository.getEventsNearby(lat, lng, 320.0)  // ~200 mi
-            EventFilter.JOINED   -> eventRepository.getEventsForUser(uid)
-            EventFilter.HOSTED   -> flow { emit(emptyList<Event>()) }
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    // Re-query whenever EITHER filter OR location changes
+    val events: StateFlow<List<Event>> = combine(_filter, _location) { f, loc -> f to loc }
+        .flatMapLatest { (f, loc) ->
+            val uid = auth.currentUser?.uid ?: ""
+            val (lat, lng) = loc
+            when (f) {
+                EventFilter.NEARBY   -> eventRepository.getEventsNearby(lat, lng, 80.0)   // ~50 mi
+                EventFilter.UPCOMING -> eventRepository.getEventsNearby(lat, lng, 320.0)  // ~200 mi
+                EventFilter.JOINED   -> eventRepository.getEventsForUser(uid)
+                EventFilter.HOSTED   -> eventRepository.getEventsForHost(uid)
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init { fetchLocation() }
 

@@ -50,6 +50,16 @@ class EventRepositoryImpl @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    override fun getEventsForHost(uid: String): Flow<List<Event>> = callbackFlow {
+        val listener = events
+            .whereEqualTo("hostId", uid)
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                trySend(snap.toObjects(Event::class.java).sortedBy { it.startTime })
+            }
+        awaitClose { listener.remove() }
+    }
+
     override fun getEventsForClub(clubId: String): Flow<List<Event>> = callbackFlow {
         val listener = events
             .whereEqualTo("clubId", clubId)

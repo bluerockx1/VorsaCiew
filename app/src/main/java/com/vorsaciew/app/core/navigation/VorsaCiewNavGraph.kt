@@ -133,28 +133,29 @@ fun VorsaCiewNavHost(
             composable(Screen.Feed.route)   { FeedScreen(navController) }
             composable(Screen.Clubs.route)  { ClubsScreen(navController) }
 
+            // IMPORTANT: static "profile/edit" MUST come before parameterized "profile/{userId}"
+            composable(Screen.EditProfile.route) { EditProfileScreen(navController) }
             composable(
                 Screen.Profile.route,
                 arguments = listOf(navArgument("userId") { type = NavType.StringType })
             ) { ProfileScreen(navController) }
 
-            composable(Screen.EditProfile.route) { EditProfileScreen(navController) }
-
-            // Events
+            // IMPORTANT: "event/create" MUST come before "event/{eventId}"
+            composable(Screen.CreateEvent.route) { CreateEventScreen(navController) }
             composable(
                 Screen.EventDetail.route,
                 arguments = listOf(navArgument("eventId") { type = NavType.StringType })
             ) { EventDetailScreen(navController) }
-            composable(Screen.CreateEvent.route) { CreateEventScreen(navController) }
 
-            // Rally
+            // IMPORTANT: "rally/create" MUST come before "rally/{rallyId}"
+            composable(Screen.CreateRally.route) { CreateRallyScreen(navController) }
             composable(
                 Screen.RallyDetail.route,
                 arguments = listOf(navArgument("rallyId") { type = NavType.StringType })
             ) { RallyDetailScreen(navController) }
-            composable(Screen.CreateRally.route) { CreateRallyScreen(navController) }
 
-            // Garage
+            // IMPORTANT: "vehicle/add" MUST come before "vehicle/{vehicleId}"
+            composable(Screen.AddVehicle.route) { AddVehicleScreen(navController) }
             composable(
                 Screen.Garage.route,
                 arguments = listOf(navArgument("userId") { type = NavType.StringType })
@@ -163,7 +164,6 @@ fun VorsaCiewNavHost(
                 Screen.VehicleDetail.route,
                 arguments = listOf(navArgument("vehicleId") { type = NavType.StringType })
             ) { VehicleDetailScreen(navController) }
-            composable(Screen.AddVehicle.route) { AddVehicleScreen(navController) }
             composable(
                 Screen.AddBuildLog.route,
                 arguments = listOf(navArgument("vehicleId") { type = NavType.StringType })
@@ -173,19 +173,20 @@ fun VorsaCiewNavHost(
                 arguments = listOf(navArgument("vehicleId") { type = NavType.StringType })
             ) { AddModificationScreen(navController) }
 
-            // Clubs
+            // IMPORTANT: "club/create" MUST come before "club/{clubId}"
+            composable(Screen.CreateClub.route) { CreateClubScreen(navController) }
             composable(
                 Screen.ClubDetail.route,
                 arguments = listOf(navArgument("clubId") { type = NavType.StringType })
             ) { ClubDetailScreen(navController) }
-            composable(Screen.CreateClub.route) { CreateClubScreen(navController) }
 
-            // Social
+            // IMPORTANT: "post/create" MUST come before "post/{postId}"
+            composable(Screen.CreatePost.route) { CreatePostScreen(navController) }
             composable(
                 Screen.PostDetail.route,
                 arguments = listOf(navArgument("postId") { type = NavType.StringType })
             ) { PostDetailScreen(navController) }
-            composable(Screen.CreatePost.route) { CreatePostScreen(navController) }
+
             composable(
                 Screen.Chat.route,
                 arguments = listOf(navArgument("roomId") { type = NavType.StringType })

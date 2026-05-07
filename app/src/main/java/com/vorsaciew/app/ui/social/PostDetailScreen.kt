@@ -61,6 +61,10 @@ class PostDetailViewModel @Inject constructor(
             postRepository.addComment(postId, PostComment(text = text))
         }
     }
+
+    fun toggleLike() {
+        viewModelScope.launch { postRepository.toggleLike(postId) }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +99,7 @@ fun PostDetailScreen(navController: NavController, vm: PostDetailViewModel = hil
         LazyColumn(Modifier.fillMaxSize().padding(padding)) {
             post?.let { p ->
                 item {
-                    PostCard(post = p, onLike = {}, onComment = {}, onAuthorClick = {})
+                    PostCard(post = p, onLike = { vm.toggleLike() }, onComment = {}, onAuthorClick = {})
                     HorizontalDivider()
                     Text("Comments", Modifier.padding(12.dp),
                         style = MaterialTheme.typography.titleSmall)

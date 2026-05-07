@@ -47,7 +47,8 @@ class CreatePostViewModel @Inject constructor(
     fun create(caption: String) {
         viewModelScope.launch {
             postRepository.createPost(Post(caption = caption))
-            _done.value = true
+                .onSuccess { _done.value = true }
+            // on failure: stay on screen so user can retry
         }
     }
 }
