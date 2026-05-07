@@ -31,6 +31,16 @@ class EventDetailViewModel @Inject constructor(
         e?.attendeeIds?.contains(uid) == true
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    fun join()  { viewModelScope.launch { eventRepository.joinEvent(eventId) } }
-    fun leave() { viewModelScope.launch { eventRepository.leaveEvent(eventId) } }
+    val isHost: StateFlow<Boolean> = event.map { e ->
+        val uid = auth.currentUser?.uid ?: return@map false
+        e?.hostId == uid
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun join()   { viewModelScope.launch { eventRepository.joinEvent(eventId) } }
+    fun leave()  { viewModelScope.launch { eventRepository.leaveEvent(eventId) } }
+    fun delete(onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            eventRepository.deleteEvent(eventId).onSuccess { onSuccess() }
+        }
+    }
 }

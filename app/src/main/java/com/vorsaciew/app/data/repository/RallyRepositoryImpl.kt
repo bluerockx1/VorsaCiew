@@ -2,7 +2,6 @@ package com.vorsaciew.app.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.vorsaciew.app.data.model.Rally
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -22,9 +21,9 @@ class RallyRepositoryImpl @Inject constructor(
     override fun getPublicRallies(): Flow<List<Rally>> = callbackFlow {
         val listener = rallies
             .whereEqualTo("isPublic", true)
-            .orderBy("startTime", Query.Direction.ASCENDING)
-            .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(Rally::class.java) ?: emptyList())
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) { trySend(emptyList()); return@addSnapshotListener }
+                trySend(snap.toObjects(Rally::class.java).sortedBy { it.startTime })
             }
         awaitClose { listener.remove() }
     }

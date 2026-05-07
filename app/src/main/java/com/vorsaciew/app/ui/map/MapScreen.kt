@@ -49,7 +49,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.vorsaciew.app.core.navigation.Screen
 import com.vorsaciew.app.data.model.LiveDriverPin
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -165,7 +165,14 @@ fun MapScreen(navController: NavController, vm: MapViewModel = hiltViewModel()) 
         AndroidView(
             factory = { ctx ->
                 MapView(ctx).apply {
-                    setTileSource(TileSourceFactory.MAPNIK)
+                    setTileSource(XYTileSource(
+                        "CartoDB.Voyager", 0, 19, 256, ".png",
+                        arrayOf(
+                            "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
+                            "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
+                            "https://c.basemaps.cartocdn.com/rastertiles/voyager/"
+                        )
+                    ))
                     setMultiTouchControls(true)
                     controller.setZoom(13.0)
                     controller.setCenter(GeoPoint(37.7749, -122.4194))

@@ -125,6 +125,30 @@ class PostRepositoryImpl @Inject constructor(
         posts.document(postId).update(
             "commentCount", com.google.firebase.firestore.FieldValue.increment(1)
         ).await()
+
+        // Notify the post author (skip if commenter IS the author)
+        try {
+            val postDoc = posts.document(postId).get().await()
+            val authorId = postDoc.getString("authorId") ?: return@runCatching
+            if (authorId != uid) {
+                val notifRef = firestore.collection("notifications")
+                    .document(authorId)
+                    .collection("items")
+                    .document()
+                notifRef.set(mapOf(
+                    "id"             to notifRef.id,
+                    "recipientUid"   to authorId,
+                    "senderUid"      to uid,
+                    "senderName"     to displayName,
+                    "senderAvatarUrl" to avatarUrl,
+                    "type"           to "COMMENT",
+                    "postId"         to postId,
+                    "message"        to "${displayName.ifEmpty { "Someone" }} commented on your post",
+                    "isRead"         to false,
+                    "createdAt"      to System.currentTimeMillis()
+                )).await()
+            }
+        } catch (_: Exception) { /* notifications are best-effort */ }
     }
 
     override suspend fun deletePost(postId: String): Result<Unit> = runCatching {

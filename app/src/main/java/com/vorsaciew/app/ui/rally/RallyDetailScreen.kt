@@ -51,7 +51,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -103,7 +103,14 @@ fun RallyDetailScreen(navController: NavController, vm: RallyDetailViewModel = h
                         AndroidView(
                             factory = { ctx ->
                                 MapView(ctx).apply {
-                                    setTileSource(TileSourceFactory.MAPNIK)
+                                    setTileSource(XYTileSource(
+                        "CartoDB.Voyager", 0, 19, 256, ".png",
+                        arrayOf(
+                            "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
+                            "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
+                            "https://c.basemaps.cartocdn.com/rastertiles/voyager/"
+                        )
+                    ))
                                     setMultiTouchControls(true)
 
                                     // Draw route polyline in brand red

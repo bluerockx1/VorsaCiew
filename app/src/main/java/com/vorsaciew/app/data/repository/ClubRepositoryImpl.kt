@@ -58,9 +58,12 @@ class ClubRepositoryImpl @Inject constructor(
             createdAt = System.currentTimeMillis()
         )
         ref.set(withId).await()
-        firestore.collection("users").document(uid)
-            .update("clubIds", com.google.firebase.firestore.FieldValue.arrayUnion(ref.id))
-            .await()
+        // Fire-and-forget: don't let user-doc update failure roll back club creation
+        try {
+            firestore.collection("users").document(uid)
+                .update("clubIds", com.google.firebase.firestore.FieldValue.arrayUnion(ref.id))
+                .await()
+        } catch (_: Exception) { }
         ref.id
     }
 
