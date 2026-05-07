@@ -44,8 +44,12 @@ import com.vorsaciew.app.ui.garage.VehicleDetailScreen
 import com.vorsaciew.app.ui.map.MapScreen
 import com.vorsaciew.app.ui.profile.EditProfileScreen
 import com.vorsaciew.app.ui.profile.ProfileScreen
+import com.vorsaciew.app.ui.convoy.ConvoyDetailScreen
+import com.vorsaciew.app.ui.convoy.ConvoysScreen
+import com.vorsaciew.app.ui.convoy.CreateConvoyScreen
 import com.vorsaciew.app.ui.rally.CreateRallyScreen
 import com.vorsaciew.app.ui.rally.RallyDetailScreen
+import com.vorsaciew.app.ui.rally.RalliesScreen
 import com.vorsaciew.app.ui.social.ChatListScreen
 import com.vorsaciew.app.ui.social.ChatScreen
 import com.vorsaciew.app.ui.social.CreatePostScreen
@@ -195,6 +199,16 @@ fun VorsaCiewNavHost(
             composable(Screen.Notifications.route) { NotificationsScreen(navController) }
             composable(Screen.Settings.route)      { SettingsScreen(navController, authViewModel) }
             composable(Screen.Search.route)        { SearchScreen(navController) }
+
+            // IMPORTANT: "convoy/create" MUST come before "convoy/{convoyId}"
+            composable(Screen.Convoys.route)       { ConvoysScreen(navController) }
+            composable(Screen.CreateConvoy.route)  { CreateConvoyScreen(navController) }
+            composable(
+                Screen.ConvoyDetail.route,
+                arguments = listOf(navArgument("convoyId") { type = NavType.StringType })
+            ) { ConvoyDetailScreen(navController) }
+
+            composable(Screen.Rallies.route) { RalliesScreen(navController) }
         }
     }
 }

@@ -3,6 +3,7 @@ package com.vorsaciew.app.data.repository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.vorsaciew.app.data.model.ChatMessage
 import com.vorsaciew.app.data.model.ChatRoom
 import com.vorsaciew.app.data.model.ChatRoomType
@@ -25,9 +26,10 @@ class ChatRepositoryImpl @Inject constructor(
         val uid = auth.currentUser?.uid ?: run { trySend(emptyList()); close(); return@callbackFlow }
         val listener = rooms
             .whereArrayContains("participantIds", uid)
-            .orderBy("lastMessageTimestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snap, _ ->
-                trySend(snap?.toObjects(ChatRoom::class.java) ?: emptyList())
+                val sorted = (snap?.toObjects(ChatRoom::class.java) ?: emptyList())
+                    .sortedByDescending { it.lastMessageTimestamp }
+                trySend(sorted)
             }
         awaitClose { listener.remove() }
     }
@@ -68,11 +70,12 @@ class ChatRepositoryImpl @Inject constructor(
             timestamp = System.currentTimeMillis()
         )
         ref.set(withId).await()
-        rooms.document(roomId).update(
+        rooms.document(roomId).set(
             mapOf(
                 "lastMessage"          to message.text,
                 "lastMessageTimestamp" to withId.timestamp
-            )
+            ),
+            SetOptions.merge()
         ).await()
     }
 }

@@ -62,4 +62,14 @@ sealed class Screen(val route: String) {
     object Notifications: Screen("notifications")
     object Settings     : Screen("settings")
     object Search       : Screen("search")
+
+    // Convoy
+    object Convoys      : Screen("convoys")
+    object CreateConvoy : Screen("convoy/create")
+    object ConvoyDetail : Screen("convoy/{convoyId}") {
+        fun createRoute(id: String) = "convoy/$id"
+    }
+
+    // Rallies list
+    object Rallies      : Screen("rallies")
 }

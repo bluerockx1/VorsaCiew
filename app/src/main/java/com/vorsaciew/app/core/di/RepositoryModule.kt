@@ -2,6 +2,8 @@ package com.vorsaciew.app.core.di
 
 import com.vorsaciew.app.data.repository.AuthRepository
 import com.vorsaciew.app.data.repository.AuthRepositoryImpl
+import com.vorsaciew.app.data.repository.ConvoyRepository
+import com.vorsaciew.app.data.repository.ConvoyRepositoryImpl
 import com.vorsaciew.app.data.repository.ChatRepository
 import com.vorsaciew.app.data.repository.ChatRepositoryImpl
 import com.vorsaciew.app.data.repository.ClubRepository
@@ -54,4 +56,7 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindLocationRepository(impl: LocationRepositoryImpl): LocationRepository
+
+    @Binds @Singleton
+    abstract fun bindConvoyRepository(impl: ConvoyRepositoryImpl): ConvoyRepository
 }
